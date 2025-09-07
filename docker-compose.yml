@@ -1,0 +1,74 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:8
+    container_name: ms-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: escuela
+    ports:
+      - "3306:3306"
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  auth:
+    build: ./auth-service
+    environment:
+      - PORT=3001
+      - JWT_SECRET=super_secreto
+    ports: ["3001:3001"]
+
+  products:
+    build: ./product-service
+    environment:
+      - PORT=3002
+      - JWT_SECRET=super_secreto
+    ports: ["3002:3002"]
+    depends_on: [auth]
+
+  students:
+    build: ./students-service
+    environment:
+      - PORT=3003
+      - JWT_SECRET=super_secreto
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_NAME=escuela
+    ports: ["3003:3003"]
+    depends_on: [mysql]
+
+  courses:
+    build: ./courses-service
+    environment:
+      - PORT=3004
+      - JWT_SECRET=super_secreto
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_NAME=escuela
+    ports: ["3004:3004"]
+    depends_on: [mysql]
+
+  enrollments:
+    build: ./enrollments-service
+    environment:
+      - PORT=3005
+      - JWT_SECRET=super_secreto
+      - STUDENTS_URL=http://students:3003/estudiantes
+      - COURSES_URL=http://courses:3004/cursos
+    ports: ["3005:3005"]
+    depends_on: [students, courses]
+
+  reports:
+    build: ./reports-service
+    environment:
+      - PORT=3006
+      - JWT_SECRET=super_secreto
+      - ENROLLMENTS_URL=http://enrollments:3005/inscripciones
+    ports: ["3006:3006"]
+    depends_on: [enrollments]
+
+volumes:
+  mysql_data:
